@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>mROAS Optimizer for Amazon</title>
+  <link rel="stylesheet" href="assets/css/styles.css"/>
+  <meta name="description" content="Optimize Amazon ad spend using a saturation curve to maximize marginal ROAS and profit, with interactive charts and a plain-English summary."/>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">⎈</div>
+      <div class="titles">
+        <h1>Marginal ROAS Optimizer</h1>
+        <p>For Amazon Advertisers & Sellers</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btnLoadSample" class="ghost">Load Sample</button>
+      <a id="btnExportSession" class="ghost" download="mroas_session.json">Export Session</a>
+      <label class="file-input">
+        <input type="file" id="fileInput" accept=".csv"/>
+        <span>Import CSV</span>
+      </label>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>1) Configure Inputs</h2>
+      <div class="grid grid-3">
+        <div>
+          <label>Contribution Margin %
+            <span class="help" data-tip="Your after-variable-margin on revenue (e.g., 40 means $0.40 gross margin per $1 of sales). Used to compute the profit-maximizing spend where margin × mROAS = 1.">ℹ</span>
+          </label>
+          <input id="marginInput" type="number" min="1" max="95" step="0.1" value="40"/>
+        </div>
+        <div>
+          <label>Use Total Sales in Fit
+            <span class="help" data-tip="If your CSV includes Total Sales, the optimizer will jointly fit a baseline + incremental model to improve curve stability.">ℹ</span>
+          </label>
+          <select id="useTotalSelect">
+            <option value="auto" selected>Auto (if present)</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div>
+          <label>Current Spend Mode
+            <span class="help" data-tip="How to define 'current' spend for headroom metrics.">ℹ</span>
+          </label>
+          <select id="currentSpendMode">
+            <option value="last" selected>Last Row</option>
+            <option value="mean_last_7">Mean of Last 7</option>
+            <option value="median_last_7">Median of Last 7</option>
+          </select>
+        </div>
+      </div>
+
+      <details class="mt-12">
+        <summary>Column Mapping <span class="muted">(auto-detects common headers)</span></summary>
+        <div class="grid grid-3 mt-12">
+          <div>
+            <label>Ad Spend</label>
+            <select id="colSpend"></select>
+          </div>
+          <div>
+            <label>Ad Sales (Attributed)</label>
+            <select id="colAdSales"></select>
+          </div>
+          <div>
+            <label>Total Sales</label>
+            <select id="colTotalSales"></select>
+          </div>
+        </div>
+        <div class="grid grid-3 mt-12">
+          <div>
+            <label>ROAS</label>
+            <select id="colROAS"></select>
+          </div>
+          <div>
+            <label>TROAS</label>
+            <select id="colTROAS"></select>
+          </div>
+          <div>
+            <label>Date</label>
+            <select id="colDate"></select>
+          </div>
+        </div>
+        <p class="muted mt-8">If Ad Sales or Total Sales are missing, the app will attempt to compute them from ROAS/TROAS × Spend when available.</p>
+      </details>
+
+      <div class="actions mt-16">
+        <button id="btnFit" class="primary" disabled>Fit Curve</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) Results</h2>
+      <div id="resultsGrid" class="grid grid-3 compact">
+        <!-- Summary cards populated by JS -->
+      </div>
+      <div class="actions mt-12">
+        <button id="btnExportCSV" class="ghost" disabled>Export Results CSV</button>
+        <button id="btnExportPNG" class="ghost" disabled>Export Chart PNG</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3) Interactive Charts</h2>
+      <div class="chart-wrap">
+        <div class="chart-header">
+          <h3>Spend vs Ad Sales</h3>
+          <div class="legend" id="legendMain"></div>
+        </div>
+        <canvas id="chartMain" width="1200" height="520"></canvas>
+        <div class="chart-tooltip" id="chartTooltip" hidden></div>
+      </div>
+      <div class="grid grid-2 mt-16">
+        <div class="chart-wrap">
+          <div class="chart-header">
+            <h3>Marginal ROAS (mROAS) vs Spend</h3>
+          </div>
+          <canvas id="chartMarginal" width="1200" height="400"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-header">
+            <h3>Profit vs Spend</h3>
+          </div>
+          <canvas id="chartProfit" width="1200" height="400"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4) Plain-English Summary (Gemini Optional)</h2>
+      <div class="grid grid-3">
+        <div>
+          <label>Gemini API Key
+            <span class="help" data-tip="Optional. If set, the app can call your Gemini endpoint to draft a non-technical summary. Consider running the local proxy to avoid browser CORS limits.">ℹ</span>
+          </label>
+          <input id="geminiKey" type="password" placeholder="Paste API key (optional)"/>
+        </div>
+        <div>
+          <label>Model Name
+            <span class="help" data-tip="Example: gemini-2.5-flash or gemini-2.5-pro. Use a model that's enabled for your API key.">ℹ</span>
+          </label>
+          <input id="geminiModel" type="text" value="gemini-2.5-flash"/>
+        </div>
+        <div>
+          <label>Use Local Proxy
+            <span class="help" data-tip="Run the included Node proxy and leave this ON to avoid CORS issues.">ℹ</span>
+          </label>
+          <select id="useProxy">
+            <option value="yes" selected>Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions mt-12">
+        <button id="btnGemini" class="primary" disabled>Generate Summary</button>
+      </div>
+      <textarea id="summaryText" class="summary" placeholder="Your summary will appear here..."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>What this app does</h2>
+      <div class="prose">
+        <p><strong>Goal.</strong> Find the ad spend where each extra $1 returns exactly $1 in margin-adjusted revenue (i.e., <em>margin × mROAS = 1</em>). That’s the <strong>profit‑maximizing</strong> spend. We also surface a <em>knee point</em> where diminishing returns become visually significant.</p>
+        <p><strong>Model.</strong> We fit a <em>monotonic, saturating response curve</em> between ad spend and attributed sales using two candidates and select the better one by information criteria:</p>
+        <ul>
+          <li><em>Hill</em>: <code>y = S_max · x^β / (s50^β + x^β)</code></li>
+          <li><em>Exponential saturation</em>: <code>y = S_max · (1 − e^{−k x})^θ</code></li>
+        </ul>
+        <p>When <em>Total Sales</em> is present we jointly fit a <em>baseline + incremental</em> model: <code>Total ≈ Baseline + Incremental(x)</code>. Fitting uses a robust, gradient‑free optimizer (Nelder–Mead) over a squared‑error objective.</p>
+        <p><strong>Optimization.</strong> Profit <code>P(x) = margin · y(x) − x</code> is maximized where <code>margin · y′(x) = 1</code>. We solve for that <code>x*</code>, the <em>profit‑maximizing spend</em>. The app also computes ROAS headroom, elasticity, and goodness‑of‑fit (R²).</p>
+        <p><strong>Interpretation.</strong> Average ROAS usually falls as spend scales; what matters is the <em>marginal</em> return of the next dollar. If your current spend is below <code>x*</code>, you likely have profitable headroom; if it’s above, each extra dollar is likely value‑destructive given your margin.</p>
+      </div>
+      <details class="mt-8">
+        <summary>Metric definitions</summary>
+        <ul class="defs">
+          <li><strong>ROAS</strong>: Attributed sales ÷ ad spend.</li>
+          <li><strong>TROAS</strong>: Total sales ÷ ad spend.</li>
+          <li><strong>mROAS</strong>: <em>Marginal</em> ROAS, the derivative <code>dy/dx</code> — incremental sales from the next $1 of spend.</li>
+          <li><strong>Contribution Margin</strong>: After‑variable margin per $1 of revenue (e.g., 0.40 means 40¢ per $1).</li>
+          <li><strong>Elasticity</strong>: % change in sales for a 1% change in spend at a given point.</li>
+          <li><strong>Headroom</strong>: Lift achievable by moving from current to optimal spend.</li>
+          <li><strong>R²</strong>: Share of variance in sales explained by the fitted curve.</li>
+        </ul>
+      </details>
+      <details class="mt-8">
+        <summary>Design choices & math notes</summary>
+        <ul class="defs">
+          <li>Both candidate curves are <em>monotonic</em> and <em>concave</em>, reflecting diminishing returns observed in retail media.</li>
+          <li>Nelder–Mead avoids brittle gradients on noisy, heteroskedastic retail data.</li>
+          <li>When present, Total Sales stabilizes the fit via a shared incremental curve plus a baseline term.</li>
+          <li>A knee detection (Kneedle) provides a human‑intuitive “diminishing returns” marker alongside the profit optimum.</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div>mROAS Optimizer • Built for practical Amazon scaling decisions.</div>
+    <div class="links">
+      <a href="README.html" target="_blank">Setup Guide</a>
+      <a href="SAMPLE_DATA.csv" download>Download Sample CSV</a>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

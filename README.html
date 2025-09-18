@@ -1,0 +1,50 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>mROAS Optimizer — Setup Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="assets/css/styles.css"/>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h2>Setup Guide</h2>
+      <ol>
+        <li><strong>Download</strong> the app ZIP and unzip anywhere on your computer.</li>
+        <li><strong>Open <code>index.html</code></strong> in your browser (Chrome/Edge recommended).</li>
+        <li><strong>Click “Load Sample”</strong> to explore, or import your own CSV.</li>
+        <li>Map columns under <em>Column Mapping</em> if auto-detect missed anything.</li>
+        <li>Set your <strong>Contribution Margin %</strong> and click <strong>Fit Curve</strong>.</li>
+      </ol>
+      <h3>CSV Requirements</h3>
+      <ul>
+        <li>Ad Spend is required. Ad Sales and/or Total Sales recommended.</li>
+        <li>If Ad Sales (or Total) are missing, provide ROAS (or TROAS) and the app will compute them as Spend × ROAS.</li>
+        <li>Include a Date column if you want the “Current spend” to be based on the latest row.</li>
+      </ul>
+      <h3>Gemini Integration (Optional)</h3>
+      <p>You can generate a plain-English summary using Gemini:</p>
+      <ol>
+        <li>Enter your <strong>Gemini API Key</strong> and <strong>Model</strong> (e.g., <code>gemini-2.5-flash</code> or <code>gemini-2.5-pro</code>).</li>
+        <li><strong>Recommended:</strong> run the local proxy to avoid browser CORS:
+          <pre>cd server
+npm install
+node proxy.js</pre>
+          This starts a server on <code>http://localhost:8787</code>. The app calls <code>/server/gemini</code> which proxies to Gemini.
+        </li>
+      </ol>
+      <h3>How it Works</h3>
+      <p>The app fits two common saturating response curves (Hill and Exponential) to your data via a robust Nelder–Mead optimizer, optionally with a baseline when Total Sales are present. It then finds the profit-maximizing spend where <code>margin × mROAS = 1</code>. We also compute an elbow (“knee”) as a visual diminishing-returns marker.</p>
+      <h3>Outputs</h3>
+      <ul>
+        <li>Optimal spend, ad sales, ROAS, mROAS, profit</li>
+        <li>Current vs optimal headroom for spend, ROAS, ad sales, profit</li>
+        <li>R², elasticity at current and optimal</li>
+        <li>Interactive charts with hover readouts</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

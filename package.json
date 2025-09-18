@@ -1,0 +1,11 @@
+{
+  "name": "mroas-proxy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Local proxy for Gemini calls used by the mROAS Optimizer app",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "dependencies": {}
+}
